@@ -1,0 +1,13 @@
+{
+  "name": "Small-Libs",
+  "keywords": "algoritms, arduino",
+  "description": "A set of small functions for implementing typical algorithms in Arduino.",
+  "homepage": "https://github.com/SerhiiLe/microTelegramAPI",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SerhiiLe/Small-Libs"
+  },
+  "version": "1.0.0",
+  "frameworks": "arduino",
+  "platforms": "*"
+}

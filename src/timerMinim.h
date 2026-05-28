@@ -2,6 +2,7 @@
 #define timerMinim_h
 
 #include <Arduino.h>
+#include "timerMinimT.hpp"
 
 /*
 	Таймер для переодически повторяющихся операций.
@@ -15,40 +16,7 @@
 
 	Для разовых ожиданий проще использовать millis() напрямую.
 */
-
-class timerMinim
-{
-	public:
-		// объявление таймера с указанием интервала
-		timerMinim(uint32_t interval=60000) {
-			setInterval(interval);
-		}
-		// установка интервала работы таймера и сброс таймера
-		void setInterval(uint32_t interval) {
-			// хотя-бы одна миллисекунда, для приличия
-			_interval = interval ? interval: 1;
-			reset();
-		}
-		// возвращает true, когда пришло время.
-		bool isReady() {
-			if ((int32_t)(millis() - _next) > 0) {
-				reset();
-				return true;
-			}
-			return false;
-		}
-		// ручной сброс таймера, отсчёт начнётся с начала
-		void reset() {
-			_next = millis() + _interval;
-		}
-		// выставить задержку до следующего срабатывания, или дублирует reset(), если задержка 0.
-		void setNext(uint32_t next = 0) {
-			_next = millis() + (next ? next: _interval);
-		}
-
-	private:
-		uint32_t _interval = 0;
-		uint32_t _next = 0;
-};
+typedef timerMinimT<millis> timerMinim;
+// using timerMinim = timerMinimT<millis>;
 
 #endif

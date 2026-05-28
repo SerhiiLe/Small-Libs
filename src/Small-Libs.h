@@ -4,3 +4,6 @@
 // Подключение всех библиотек. Неиспользуемые не попадут в Вашу программу и не займут место.
 
 #include "timerMinim.h"
+#include "fletcherChecksum.h"
+#include "stringConverters.h"
+#include "webServerUtils.h"

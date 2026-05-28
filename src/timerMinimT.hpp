@@ -1,5 +1,5 @@
-#ifndef timerMinimT_h
-#define timerMinimT_h
+#ifndef timerMinimT_hpp
+#define timerMinimT_hpp
 
 /*
 	Таймер для переодически повторяющихся операций.
@@ -15,23 +15,23 @@
 	Для разовых ожиданий проще использовать millis() или его аналог напрямую.
 */
 
-template <uint32_t (*TimeFunc)()>
+template <unsigned long (*TimeFunc)()>
 class timerMinimT
 {
 	public:
 		// объявление таймера с указанием интервала
-		timerMinimT(uint32_t interval=60000) {
+		timerMinimT(unsigned long interval=60000) {
 			setInterval(interval);
 		}
 		// установка интервала работы таймера и сброс таймера
-		void setInterval(uint32_t interval) {
+		void setInterval(unsigned long interval) {
 			// хотя-бы одна миллисекунда, для приличия
 			_interval = interval ? interval: 1;
 			reset();
 		}
 		// возвращает true, когда пришло время.
 		bool isReady() {
-			if ((int32_t)(TimeFunc() - _next) > 0) {
+			if ((long)(TimeFunc() - _next) > 0) {
 				reset();
 				return true;
 			}
@@ -42,13 +42,13 @@ class timerMinimT
 			_next = TimeFunc() + _interval;
 		}
 		// выставить задержку до следующего срабатывания, или дублирует reset(), если задержка 0.
-		void setNext(uint32_t next = 0) {
+		void setNext(unsigned long next = 0) {
 			_next = TimeFunc() + (next ? next: _interval);
 		}
 
 	private:
-		uint32_t _interval = 0;
-		uint32_t _next = 0;
+		unsigned long _interval = 0;
+		unsigned long _next = 0;
 };
 
 #endif

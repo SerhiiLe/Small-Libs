@@ -1,5 +1,5 @@
-#ifndef timerMinimT_hpp
-#define timerMinimT_hpp
+#ifndef TimerMinimT_hpp
+#define TimerMinimT_hpp
 
 /*
 	Таймер для переодически повторяющихся операций.
@@ -16,11 +16,11 @@
 */
 
 template <unsigned long (*TimeFunc)()>
-class timerMinimT
+class TimerMinimT
 {
 	public:
 		// объявление таймера с указанием интервала
-		timerMinimT(unsigned long interval=60000) {
+		TimerMinimT(unsigned long interval=60000) {
 			setInterval(interval);
 		}
 		// установка интервала работы таймера и сброс таймера

@@ -1,8 +1,8 @@
-#ifndef timerMinim_h
-#define timerMinim_h
+#ifndef TimerMinim_h
+#define TimerMinim_h
 
 #include <Arduino.h>
-#include "timerMinimT.hpp"
+#include "TimerMinimT.hpp"
 
 /*
 	Таймер для переодически повторяющихся операций.
@@ -16,7 +16,7 @@
 
 	Для разовых ожиданий проще использовать millis() напрямую.
 */
-typedef timerMinimT<millis> timerMinim;
-// using timerMinim = timerMinimT<millis>;
+typedef TimerMinimT<millis> TimerMinim;
+// using TimerMinim = TimerMinimT<millis>;
 
 #endif

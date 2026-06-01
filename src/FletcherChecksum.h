@@ -1,5 +1,5 @@
-#ifndef flatcherChecksum_h
-#define flatcherChecksum_h
+#ifndef FletcherChecksum_h
+#define FletcherChecksum_h
 
 /*
 Расчёт контрольной суммы
@@ -10,10 +10,11 @@
 // typedef unsigned short uint16_t;
 // typedef unsigned char uint8_t;
 
-struct fletcherChecksum
+struct FletcherChecksum
 {
-    // Расчёт контрольно суммы по формуле Flatcher8
-    uint8_t fletcher8(uint8_t *data, uint16_t len) {
+    // Calculating the checksum using the Flatcher8 formula
+    // Расчёт контрольной суммы по формуле Flatcher8
+    static uint8_t fletcher8(uint8_t *data, size_t len) {
         uint16_t sum1 = 0xf, sum2 = 0xf;
         while( len-- ) {
             sum1 += *data++;
@@ -26,8 +27,9 @@ struct fletcherChecksum
         return sum2<<4 | sum1;
     }
 
-    // Расчёт контрольно суммы по формуле Fletcher16
-    uint16_t fletcher16(uint8_t *data, size_t len) {
+    // Calculating the checksum using the Flatcher16 formula
+    // Расчёт контрольной суммы по формуле Fletcher16
+    static uint16_t fletcher16(uint8_t *data, size_t len) {
         uint16_t sum1 = 0;
         uint16_t sum2 = 0;
         while( len-- ) {

@@ -1,14 +1,14 @@
-#ifndef httpArgToVar_h
-#define httpArgToVar_h
+#ifndef WebServerUtils_h
+#define WebServerUtils_h
 
 #include <Arduino.h>
 
 template <typename Server>
-class webServerUtils {
+class WebServerUtils {
 public:
 
 // конструктор с указанием, какой именно сервер используется. Поддерживается WebServer для esp32 и ESP8266WebServer для esp8266
-webServerUtils(Server& srv) : SRV(srv) {}
+WebServerUtils(Server& srv) : SRV(srv) {}
 
 // флаг изменения, меняется в true когда новое значение не совпадает со старым
 bool need_save = false;

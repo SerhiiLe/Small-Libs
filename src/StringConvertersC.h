@@ -1,33 +1,33 @@
-#ifndef stringConverters_h
-#define stringConverters_h
+#ifndef StringConvertersC_h
+#define StringConvertersC_h
 
 #include <Arduino.h>
 
 /*
+Оригинальный вариант с выделением буфера в стеке
+
 Эти переходы между различными кодировками немного задалбливают. На языках более высокого уровня обычно этого даже не замечаешь, а здесь функции длинной в километр.
 */
 
-class stringConverters {
+class StringConvertersC {
 
 public:
-
-// конструктор с возможным указанием допустимого размера буфера
-stringConverters(size_t max_size=2000) : _maxSize(max_size) {}
+// статический дефолтный размер буфера. Буфер на стеке, лучше не превышать 2к. Для ESP32 можно 4000.
+static const size_t DEFAULT_MAX_SIZE = 2000;
 
 // кодирование строки для GET запросов
-const char* urlEncode(char* buf, const char* str, size_t max_length, bool params = false) {
-	size_t i = 0;
-	byte c; 
-	char t, *p = buf, *last = buf + max_length - 3; // 10 это максимальное значение которое может быть добавлено %XX
+static const char* urlEncode(char* buf, const char* str, size_t max_length, bool params = false) {
+	size_t i = 0, length = strlen(str);
+	char c, t, *p = buf, *last = buf + max_length -1; // -1 На завершающий ноль
 
-	while( str[i] != '\0' && p < last) {
-		c = (byte)str[i++];
-		if(params && (c == '&' || c == '=')) { // не экранировать эти спец-символы, для передачи готовой строки параметров
+	while( i < length && p < last) {
+		c = str[i++];
+		if (params && (c == '&' || c == '=')) { // не экранировать эти спец-символы, для передачи готовой строки параметров
 			*p++ = c;
-		} else
-		if(isalnum(c)) {
+		} else if (isalnum((byte)c) || c == '-' || c == '_' || c == '.' || c == '~') {
 			*p++ = c;
 		} else {
+			if (p+2 > last) break;
 			*p++ = '%';
 			print_byte(p, c);
 		}
@@ -36,38 +36,40 @@ const char* urlEncode(char* buf, const char* str, size_t max_length, bool params
 	return buf;
 }
 // кодирование строки для GET запросов
-String urlEncode(const char* str, bool params = false) {
+static String urlEncode(const char* str, bool params = false) {
 	size_t len = strlen(str) * 3 + 10;
-	if (len > _maxSize) len = _maxSize; // буфер на стеке, лучше не превышать 2к. Для ESP32 можно 4000
-	char buf[len+1];
+	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // обрезание буфера, не вся строка может поместиться, она будет обрезана
+	char buf[len];
 	// Для больших строк надо играть с malloc/free, но это потенциальная проблема фрагментирования памяти и для маленьких строк избыточно
 	// Если сильно надо большие строки, то лучше заранее выделить большой буфер в вызывающей функции и передавать этот буфер в базовую функцию
 	// char* buf = (char*) malloc(len * sizeof(char));
 	// free(buf);
-	return String(urlEncode(buf, str, len));
+	return String(urlEncode(buf, str, len, params));
 }
 // кодирование строки для GET запросов
-String urlEncode(const String &str, bool params = false) {
+static String urlEncode(const String &str, bool params = false) {
 	return urlEncode(str.c_str(), params);
 }
 
 // Простое экранирование для json без конвертации кодировки
-const char* jsonEscape(char *buf, const char *str, size_t max_length) {
-	size_t i = 0;
+static const char* jsonEscape(char *buf, const char *str, size_t max_length) {
+	size_t i = 0, length = strlen(str);
 	byte c;
-	char t, *p = buf, *last = buf + max_length - 6; // 6 это максимальное значение которое может быть добавлено \u0011
+	char t, *p = buf, *last = buf + max_length -1; // -1 На завершающий ноль
 
-	while( str[i] != '\0' && p < last) {
+	while( i < length && p < last) {
 		// поиск символов, которые надо экранировать. Если не надо, то просто копирование
     	c = (byte)str[i++]; // получение очередного символа и сразу увеличение для следующего цикла
 
 		// стандартные управляющие символы с буквенным аналогом
 		t = is_letter_esc(c);
 		if (c < 32 || t) {
+			if (p+1 > last) break;
 			// Управляющие символы ASCII (0x00 - 0x1F), у которых нет буквенного аналога и с буквенным индексом
 			*p++ = '\\'; // общий эскейп символ для все последовательностей
 			if (t) *p++ = t; // буквенный сивол
 			else { // числовая последовательность
+				if (p+5 > last) break;
 				*p++ = 'u';
 				print_byte(p, 0);
 				print_byte(p, c);
@@ -83,24 +85,24 @@ const char* jsonEscape(char *buf, const char *str, size_t max_length) {
 	return buf;
 }
 // Простое экранирование для json без конвертации кодировки
-String jsonEscape(const char* str) {
-	size_t len = (strlen(str) * 5) /4 + 10; // думаю буфера +25% достаточно, если кочечно строка не состоит из одних только кавычек, тогда проблема.
-	if (len > _maxSize) len = _maxSize; // буфер на стеке, лучше не превышать 2к. Для ESP32 можно 4000
-	char buf[len+1];
+static String jsonEscape(const char* str) {
+	size_t len = (strlen(str) * 5) /4 + 10; // думаю буфера +25% достаточно
+	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // обрезание буфера, не вся строка может поместиться, она будет обрезана
+	char buf[len];
 	return String(jsonEscape(buf, str, len));
 }
 // Простое экранирование для json без конвертации кодировки
-String jsonEscape(const String& str) {
+static String jsonEscape(const String& str) {
 	return jsonEscape(str.c_str());
 }
 
 // Ковертация строки для json, из utf8 в utf16 вида \uABCD
-const char* jsonEncode(char* buf, const char *str, size_t max_length) {
-	size_t i = 0;
+static const char* jsonEncode(char* buf, const char *str, size_t max_length) {
+	size_t i = 0, length = strlen(str);
 	byte c; 
-	char t, *p = buf, *last = buf + max_length - 10; // 10 это максимальное значение которое может быть добавлено \u00112233
+	char t, *p = buf, *last = buf + max_length -1;
 
-	while( str[i] != '\0' && p < last) {
+	while( i < length && p < last) {
 		// Выделение символа UTF-8 и перевод его в UTF-16 для вывода в JSON
 		// 0xxxxxxx - 7 бит 1 байт, 110xxxxx - 10 бит 2 байта, 1110xxxx - 16 бит 3 байта, 11110xxx - 21 бит 4 байта
 		c = (byte)str[i++];
@@ -119,17 +121,20 @@ const char* jsonEncode(char* buf, const char *str, size_t max_length) {
 			}
 			// utf8 -> utf16
 			if( c >> 5 == 6 ) {
-		        uint16_t cc = ((uint16_t)(str[i-1] & 0x1F) << 6);
+				if (i+1 > length) break;
+		        uint16_t cc = (uint16_t)(str[i-1] & 0x1F) << 6;
 				cc |= (uint16_t)(str[i++] & 0x3F);
 				print_byte(p, cc>>8);
 				print_byte(p, cc&0xff);
 			} else if( c >> 4 == 14 ) {
-				uint16_t cc = ((uint16_t)(str[i-1] & 0x0F) << 12);
-				cc |= ((uint16_t)(str[i++] & 0x3F) << 6);
+				if (i+2 > length) break;
+				uint16_t cc = (uint16_t)(str[i-1] & 0x0F) << 12;
+				cc |= (uint16_t)(str[i++] & 0x3F) << 6;
 				cc |= (uint16_t)(str[i++] & 0x3F);
 				print_byte(p, cc>>8);
 				print_byte(p, cc&0xff);
 			} else if( c >> 3 == 30 ) {
+				if (i+3 > length) break;
 				uint32_t CP = ((uint32_t)(str[i-1] & 0x07) << 18);
 				CP |= ((uint32_t)(str[i++] & 0x3F) << 12);
 				CP |= ((uint32_t)(str[i++] & 0x3F) << 6);
@@ -139,6 +144,8 @@ const char* jsonEncode(char* buf, const char *str, size_t max_length) {
 				print_byte(p, cc>>8);
 				print_byte(p, cc&0xff);
 				cc = 0xDC00 + (uint16_t)(CP & 0x3FF);
+				*p++ = '\\';
+				*p++ = 'u';
 				print_byte(p, cc>>8);
 				print_byte(p, cc&0xff);
 			}
@@ -151,34 +158,34 @@ const char* jsonEncode(char* buf, const char *str, size_t max_length) {
 	return buf;
 }
 // Ковертация строки для json, из utf8 в utf16 вида \uABCD
-String jsonEncode(const char* str) {
-	size_t len = strlen(str)*3 + 10;
-	if (len > _maxSize) len = _maxSize; // буфер на стеке, лучше не превышать 2к. Для ESP32 можно 4000
-	char buf[len+1];
+static String jsonEncode(const char* str) {
+	size_t len = strlen(str)*3 + 24;
+	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // обрезание буфера, не вся строка может поместиться, она будет обрезана
+	char buf[len];
 	return String(jsonEncode(buf, str, len));
 }
 // Ковертация строки для json, из utf8 в utf16 вида \uABCD
-String jsonEncode(const String &str) {
+static String jsonEncode(const String &str) {
 	return jsonEncode(str.c_str());
 }
 
-// Конвертер из json в utf16 вида \uABCD в текст utf8
-const char* jsonDecode(char* buf, const char* str, size_t max_length) {
-	size_t i = 0;
-	char iChar; 
-	char t, *p = buf, *last = buf + max_length; // в данном случае длина может быть только меньше
+// Конвертер json из utf16 вида \uABCD в текст utf8
+static const char* jsonDecode(char* buf, const char* str, size_t max_length) {
+	size_t i = 0, length = strlen(str);
+	char c, t, *p = buf, *last = buf + max_length -1;
 	char* error; // указатель на символ который не является шестнадцатеричным числом.
 	char unicode[6] = "0x"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
 
-	while( str[i] != '\0' && p < last) {
-		iChar = str[i++];
-		if (iChar == '\\') { // если найден esc символ, то приступаем
-			iChar = str[++i];
-			if (iChar == 'u') { // о, да это же похоже на utf16
+	while( i < length && p < last) {
+		c = str[i++];
+		if (c == '\\') { // если найден esc символ, то приступаем
+			c = str[i++];
+			if (c == 'u') { // о, да это же похоже на utf16
 				// выборка из 4х последовательных символов, чтобы получить формат 0xABCD (16 бит)
+				if (i+3 > length) break; // входная строка внезапно оборвалась :(
 				for (int j = 2; j < 6; j++){
-					iChar = str[++i];
-					unicode[j] = iChar;
+					c = str[i++];
+					unicode[j] = c;
 				}
 				long uFirst = strtol(unicode, &error, 16); // первый промежуточный вариант
 				if (uFirst < 32) {
@@ -192,9 +199,11 @@ const char* jsonDecode(char* buf, const char* str, size_t max_length) {
 					codepoint = uFirst;
 				} else if (uFirst <= 0xDBFF) { // это похоже на 32 битный вариант utf16
 					// надо повторить предыдущий шаг, чтобы получить ещё 16 бит.
+					if (i+5 > length) break; // входная строка внезапно оборвалась :(
+					i += 2; // пропуск пары \u
 					for (int j = 2; j < 6; j++){
-						iChar = str[++i];
-						unicode[j] = iChar;
+						c = str[i++];
+						unicode[j] = c;
 					}
 					long uSecond = strtol(unicode, &error, 16); // второй промежуточный вариант
 					codepoint = (((uFirst - 0xD800) << 10) | (uSecond - 0xDC00)) + 0x10000;
@@ -209,59 +218,53 @@ const char* jsonDecode(char* buf, const char* str, size_t max_length) {
 					*p++ = ((codepoint >> 12) & 0x0F) | 0xE0;
 					*p++ = ((codepoint >> 6) & 0x3F) | 0x80;
 					*p++ = ((codepoint) & 0x3F) | 0x80;
-				} else if (codepoint <= 0x10FFFF) {
+				} else { //if (codepoint <= 0x10FFFF) {
 					*p++ = ((codepoint >> 18) & 0x07) | 0xF0;
 					*p++ = ((codepoint >> 12) & 0x3F) | 0x80;
 					*p++ = ((codepoint >> 6) & 0x3F) | 0x80;
 					*p++ = ((codepoint) & 0x3F) | 0x80;
 				}
 			// Кроме непосредственно utf16 могут быть другие символы, которые должны быть экранированы в json
-			} else if (iChar == 'n') *p++ = '\n';
-			else if (iChar == 'r') *p++ = '\r';
-			else if (iChar == 't') *p++ = '\t';
-			else if (iChar == 'b') *p++ = '\b';
-			else if (iChar == 'f') *p++ = '\f';
-			else *p++ = iChar;
+			} else if (c == 0) break;
+			else if (c == 'n') *p++ = '\n';
+			else if (c == 'r') *p++ = '\r';
+			else if (c == 't') *p++ = '\t';
+			else if (c == 'b') *p++ = '\b';
+			else if (c == 'f') *p++ = '\f';
+			else *p++ = c;
 		} else {
 			// обычные символы, в том числе из json в utf8
-			*p++ = iChar;
+			*p++ = c;
 		}
 	}
 	*p = 0;
 	return buf;
 }
-// Конвертер из json, из utf16 вида \uABCD в текст utf8
-String jsonDecode(const char* str) {
-	int len = strlen(str);
-	if (len > _maxSize) len = _maxSize; // временный массив в стеке (4096), по этому с ограничением, для esp8266 лучше не превышать 2к
-	char buf[len+1];
+// Конвертер json из utf16 вида \uABCD в текст utf8
+static String jsonDecode(const char* str) {
+	size_t len = strlen(str) +1;
+	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // временный массив в стеке
+	char buf[len];
 	return String(jsonDecode(buf, str, len));
 }
-// Конвертер из json, из utf16 вида \uABCD в текст utf8
-String jsonDecode(const String &str) {
+// Конвертер json из utf16 вида \uABCD в текст utf8
+static String jsonDecode(const String &str) {
 	return jsonDecode(str.c_str());
 }
 
 private:
 
 // печать байта в виде шестнадцатеричного числа
-void print_byte(char* &buf, byte c) {
-	if((c & 0xf) > 9)
-		*(buf+1) = (c & 0xf) - 10 + 'A';
-	else
-		*(buf+1) = (c & 0xf) + '0';
-	c = (c>>4) & 0xf;
-	if(c > 9)
-		*buf = c - 10 + 'A';
-	else
-		*buf = c+'0';
-	buf += 2;
+static void print_byte(char* &buf, byte c) {
+	byte t = c >> 4;
+	*buf++ = t > 9 ? t - 10 + 'A': t + '0';
+	t = c & 0xf;
+	*buf++ = t > 9 ? t - 10 + 'A': t + '0'; 
 }
 
 // стандартные управляющие символы с буквенным аналогом
-char is_letter_esc(char c) {
+static char is_letter_esc(char c) {
 	char t = 0;
-
 	if (c == '"') 		t = '"';
 	else if (c == '\\') t = '\\';
 	else if (c == '\n') t = 'n';
@@ -269,12 +272,9 @@ char is_letter_esc(char c) {
 	else if (c == '\t') t = 't';
 	else if (c == '\b') t = 'b';
 	else if (c == '\f') t = 'f';
-	
 	return t;
 }
 
-const size_t _maxSize;
-
-}; // конец class stringConverters
+}; // конец class StringConverters
 
 #endif

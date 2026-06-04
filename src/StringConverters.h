@@ -11,7 +11,7 @@ class StringConverters {
 
 public:
 
-	// кодирование строки для GET запросов
+	// string encoding for GET requests
 	static String urlEncode(const char* str, bool params = false) {
 		String out;
 		size_t length = strlen(str);
@@ -36,12 +36,40 @@ public:
 		}
 		return out;
 	}
-	// кодирование строки для GET запросов
+	// string encoding for GET requests
 	static String urlEncode(const String &str, bool params = false) {
 		return urlEncode(str.c_str(), params);
 	}
 
-	// Простое экранирование для json без конвертации кодировки
+	// Decoding a string from the GET request format
+	static String urlDecode(const char* str, bool params = false) {
+		String out;
+		size_t length = strlen(str);
+		if (!out.reserve(length)) return ""; // нет свободной памяти
+		char* error; // указатель на символ который не является шестнадцатеричным числом.
+		char code[] = "0x00"; // буфер в котором будем создавать число по формату функции strtol 0xAB
+
+		for (size_t i = 0; i < length; i++) {
+			char c = str[i];
+			if (c == '+') {
+				out += ' ';
+			} else if (c == '%') {
+				if (i+2 > length) break;
+				code[2] = str[++i];
+				code[3] = str[++i];
+				out += (char)strtol(code, &error, 16);
+			} else {
+				out += c;
+			}
+		}
+		return out;
+	}
+	// Decoding a string from the GET request format
+	static String urlDecode(const String &str, bool params = false) {
+		return urlDecode(str.c_str(), params);
+	}
+
+	// Simple JSON escaping without encoding conversion
 	static String jsonEscape(const char* str) {
 		String out;
 		size_t length = strlen(str);
@@ -73,12 +101,12 @@ public:
 		}
 		return out;
 	}
-	// Простое экранирование для json без конвертации кодировки
+	// Simple JSON escaping without encoding conversion
 	static String jsonEscape(const String& str) {
 		return jsonEscape(str.c_str());
 	}
 
-	// Ковертация строки для json, из utf8 в utf16 вида \uABCD
+	// Converting a JSON string from UTF-8 to UTF-16 like \uABCD
 	static String jsonEncode(const char* str) {
 		String out;
 		size_t length = strlen(str);
@@ -139,18 +167,18 @@ public:
 		}
 		return out;
 	}
-	// Ковертация строки для json, из utf8 в utf16 вида \uABCD
+	// Converting a JSON string from UTF-8 to UTF-16 like \uABCD
 	static String jsonEncode(const String &str) {
 		return jsonEncode(str.c_str());
 	}
 
-	// Конвертер json из utf16 вида \uABCD в текст utf8
+	// JSON converter from utf16 \uABCD to utf8 text
 	static String jsonDecode(const char* str) {
 		String out;
 		size_t length = strlen(str); // выходная строка всегда меньше либо равна исходной
 		if (!out.reserve(length)) return ""; // нет свободной памяти
 		char* error; // указатель на символ который не является шестнадцатеричным числом.
-		char unicode[6] = "0x"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
+		char unicode[] = "0x0000"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
 
 		for (size_t i = 0; str[i] != '\0'; ++i) {
 			char c = str[i];
@@ -163,8 +191,7 @@ public:
 				// выборка из 4х последовательных символов, чтобы получить формат 0xABCD (16 бит)
 				if (i+4 > length) break; // входная строка внезапно оборвалась :(
 				for (int j = 2; j < 6; j++) {
-					c = str[++i];
-					unicode[j] = c;
+					unicode[j] = str[++i];
 				}
 				long uFirst = strtol(unicode, &error, 16); // первый промежуточный вариант
 				if (uFirst < 32) {
@@ -181,8 +208,7 @@ public:
 					if (i+6 > length) break; // входная строка внезапно оборвалась :(
 					i += 2; // пропуск пары \u
 					for (int j = 2; j < 6; j++) {
-						c = str[++i];
-						unicode[j] = c;
+						unicode[j] = str[++i];
 					}
 					long uSecond = strtol(unicode, &error, 16); // второй промежуточный вариант
 					codepoint = (((uFirst - 0xD800) << 10) | (uSecond - 0xDC00)) + 0x10000;
@@ -214,7 +240,7 @@ public:
 		}
 		return out;
 	}
-	// Конвертер json из utf16 вида \uABCD в текст utf8
+	// JSON converter from utf16 \uABCD to utf8 text
 	static String jsonDecode(const String &str) {
 		return jsonDecode(str.c_str());
 	}

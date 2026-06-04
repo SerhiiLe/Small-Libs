@@ -4,16 +4,268 @@ A set of small functions for implementing typical algorithms in Arduino.
 
 Good practices are passed around from project to project. I simply copy them. But what if we collected them all in one library and simply connected them instead of copying them? Some functions are trivial, some are obvious, some are strange, but they all solve a problem. The library will gradually grow.
 
-Набор небольших функций для реализации типичных  алгоритмов в Arduino.
+Набор небольших функций для реализации типовых алгоритмов в Arduino.
 
 Хорошие наработки гуляют из проекта в проект. Я их просто копирую. Но если их все собрать в одну библиотеку и просто подключать, а не копировать? Некоторые функции банальны, некоторые очевидны, некоторые странные, но все они решают какую-то задачу. Библиотека потихоньку будет наполняться.
 
 ## Table of contents ([ru](#оглавление))
 
-- How to install
-- How to use
+- [How to install](#how-to-install)
+- [How to use](#how-to-use)
 
 - [The simplest timer for organizing delays instead of delay()](#timerminimh)
+- [A template class for a simple timer]()
+- [Checksum calculations]()
+- [Кодирование и декодирование строк в форматы для URL и JSON]()
+- [Набор фукции для упрощения организации http сервера]()
+
+## How to install
+
+There are three options:  
+- Unzip the archive into the libraries folder of the Arduino.
+- Add lib_deps = https://github.com/SerhiiLe/Small-Libs to the platformio.ini section.
+- Simply copy the required file into your project folder.
+
+## How to use
+
+Include the necessary files using ```#include <>``` or all at once using ```#include <Small-Libs.h>```
+
+Even though you may not need all the functions, this won't add any extra code to the final firmware. The linker will strip out all the functions you don't use. It's proven.
+
+You can create global objects or create objects locally within your functions, only where needed. However, it's better to make webServerUtils.h a global object, as it requires relatively cumbersome initialization.
+
+Aside from webServerUtils.h, all functions are platform-independent and can run anywhere; they're just algorithms. This includes non-Arduino functions. However, you may need to change the variable types.
+
+## Description of functions
+
+All functions are implemented as objects to minimize collisions with global names in projects.
+
+In functions that require passing a buffer size, this is done intentionally, as creating template functions instead of directly specifying the size significantly bloats the resulting binary code. Shortening the source code and making the syntax more elegant is counterproductive to saving firmware size.
+
+### TimerMinim.h
+
+A tool for skipping a certain amount of time. Yes, skipping is correct; it's not a full-fledged timer that runs on interrupts and calculates with microsecond accuracy. Even compared to other millis() timers, it doesn't calculate precise intervals. As practice has shown, all this is unnecessary in real life. You need to check whether the required time has passed to perform some action. The idea was honestly borrowed from the [GyverMatrixWiFi](https://github.com/vvip-68/GyverMatrixWiFi) project, where I was struck by its simplicity and incorporated it into my clock project. Over time, the code bloated, suffered from gigantism, and then shrank again, throwing out everything that turned out to be unnecessary. The result is a small and compact object.
+
+```cpp
+// timer declaration with interval specification
+TimerMinim(uint32_t interval=60000)
+
+// setting the timer interval and resetting the timer
+void setInterval(uint32_t interval)
+
+// returns true when the time has come
+bool isReady()
+
+// manual reset of the timer, the countdown will start from the beginning
+void reset()
+
+// set a delay until the next triggering, or duplicates reset() if the delay is 0
+void setNext(uint32_t next = 0)
+```
+
+### TimerMinimT.hpp
+
+Everything is similar to timerMinim.h, except that you need to pass a function that counts ticks when creating it. See examples for more details.
+
+```cpp
+// initialization example
+timerMinimT<my_time_func> timer;
+```
+
+### FletcherChecksum.h
+
+Checksum calculation. The input is always a byte array and its size. The output is the checksum.
+
+```cpp
+// Calculating the checksum using the Flatcher8 formula
+uint8_t fletcher8(uint8_t *data, uint16_t len)
+
+// Calculating the checksum using the Flatcher16 formula
+uint16_t fletcher16(uint8_t *data, size_t len)
+```
+
+Example:
+
+```cpp
+#include FletcherChecksum.h
+
+// example of data whose checksum needs to be calculated
+struct some_data {
+    int a = 1;
+    char str[50] = "hello world!";
+} data;
+
+// some function where it is necessary to calculate a checksum
+void some_func() {
+    int sum = FletcherChecksum::fletcher16((uint8_t*)&data, sizeof(some_data));
+    Serial.print(sum);
+}
+```
+
+### StringConverters.h
+
+Encoding and decoding strings into URL and JSON formats
+
+Buffers for conversion are automatically allocated on the heap (String). If there is insufficient memory for full encoding, the string will be truncated.
+
+```cpp
+// string encoding for GET requests
+String urlEncode(const char* str, bool params = false)
+String urlEncode(const String &str, bool params = false)
+
+// decoding a string from the GET request format
+String urlDecode(const char* str, bool params = false)
+String urlDecode(const String &str, bool params = false)
+
+// Simple JSON escaping without encoding conversion
+String jsonEscape(const char* str)
+String jsonEscape(const String& str)
+
+// Converting a JSON string from UTF-8 to UTF-16 like \uABCD
+String jsonEncode(const char* str)
+String jsonEncode(const String &str)
+
+// JSON converter from utf16 \uABCD to utf8 text
+String jsonDecode(const char* str)
+String jsonDecode(const String &str)
+```
+
+It can be used in the form of:
+
+```cpp
+#include <StringConverters.h>
+
+void some_func() {
+    StringConverters conv;
+    String result = conv.jsonEncode("просто что-то");
+}
+```
+
+And in the form:
+
+```cpp
+#include <StringConverters.h>
+
+void some_func() {
+    String result = StringConverters::jsonEncode("просто что-то");
+}
+```
+
+This does not affect the size of the code after compilation, only the convenience and readability of the code.
+
+### StringConvertersС.h
+
+Encoding and decoding strings into URL and JSON formats, version with a static buffer.
+
+This version of the functions requires you to manually allocate a buffer; for small strings, it's convenient to do this on the stack, which completely eliminates memory fragmentation. This version of the library also has a slightly smaller footprint after compilation, but the difference is not significant. This version should only be used if memory fragmentation issues occur with the dynamic version of these functions.
+
+All functions follow a similar pattern:
+- A basic function that accepts a buffer to be converted and its size. This is useful for large strings or if there are many strings and a single buffer is used to reduce memory fragmentation.
+- A simpler function that automatically allocates a buffer on the stack of approximately the required size. If the buffer is smaller than necessary, part of the string will simply be lost.
+- An even simpler function that simply calls the memory allocation function.
+
+If you use only the second and third forms, you lose the advantage of a static buffer. In this case, it's better to use the dynamic version of this library.
+
+Since memory is allocated using a static stack buffer, it can overflow and reset the microcontroller. The stack size for the esp8266 is 4 KB, but it's relatively safe to use only 2 KB. For the esp32, it's twice as large. If the board resets, you'll need to manually allocate memory using malloc/free and specify this buffer to the function. However, the stack buffer size is usually sufficient. The default buffer size is 2000 bytes, but you can change it by setting #define SC_SET_MAX_BUFFER_SIZE XXXX _before_ linking the library.
+
+```cpp
+#define SC_SET_MAX_BUFFER_SIZE 1500
+#include <StringConvertersС.h>
+```
+
+```cpp
+// string encoding for GET requests
+const char* urlEncode(char* buf, const char* str, size_t max_length, bool params = false)
+String urlEncode(const char* str, bool params = false)
+String urlEncode(const String &str, bool params = false)
+
+// decoding a string from the GET request format
+const char* urlDecode(char* buf, const char* str, size_t max_length)
+String urlDecode(const char* str)
+String urlDecode(const String &str)
+
+// Simple JSON escaping without encoding conversion
+const char* jsonEscape(char *buf, const char *str, size_t max_length)
+String jsonEscape(const char* str)
+String jsonEscape(const String& str)
+
+// Converting a JSON string from UTF-8 to UTF-16 like \uABCD
+const char* jsonEncode(char* buf, const char *str, size_t max_length)
+String jsonEncode(const char* str)
+String jsonEncode(const String &str)
+
+// JSON converter from utf16 \uABCD to utf8 text
+const char* jsonDecode(char* buf, const char* str, size_t max_length)
+String jsonDecode(const char* str)
+String jsonDecode(const String &str)
+```
+
+### WebServerUtils.h
+
+A set of functions to simplify the organization of an HTTP server.
+
+This is a set of individual standard functions, not a ready-made solution. They solve several problems:
+- serving static files with browser caching
+- converting parameters to variables to simplify form processing.
+- adjusting received parameters to an acceptable range.
+- recognizing that there has been a change in parameters and that the changes need to be recorded.
+
+See the example for more details.
+
+```cpp
+// A constructor specifying which server is used. WebServer for ESP32 and ESP8266 is supported.
+WebServerUtils(Server& srv)
+
+// change flag, changes to true when the new value does not match the old one
+bool need_save = false;
+
+// Sending a file. The first parameter is the file path. The second parameter is a function that enables caching for specific files.
+bool fileSend(const String &path, bool (*cc)(const String &p)=nullptr)
+
+// Sets the browser cache lifetime in seconds, defaulting to one hour = 3600 seconds
+void setCacheLive(uint16_t cache_life_time)
+
+// determining whether a checkbox is selected or not
+template <typename F>
+bool checkbox(F *name, uint8_t &var)
+
+// definition of integers
+template <typename F, typename T>
+bool to_int(F *name, T &var, long from, long to)
+
+// definition of floating-point numbers
+template <typename F>
+bool to_float(F *name, float &var, float from, float to, float prec=8.0f)
+
+// string definition (for String)
+template <typename F>
+bool to_string(F *name, String &var)
+
+// string definition (for char[])
+template <typename F>
+bool to_string(F *name, char * var, size_t len)
+
+// time definition, HH:MM to uint16_t
+template <typename F>
+bool time(F *name, uint16_t &var)
+
+// storing the color from the string #RRGGBB in a uint32_t variable
+bool color(F *name, uint32_t &var)
+
+// decoding the time specified in the input->time field (HH:MM)
+uint16_t decode_time(String s)
+```
+
+### TextToColor.h
+
+Converting a string like #RRGGBB to uint32_t and back.
+
+```cpp
+uint32_t text_to_color(const char *s)
+uint32_t text_to_color(const String &s)
+
+String color_to_text(uint32_t c)
+```
 
 ## Оглавление
 
@@ -43,11 +295,13 @@ Good practices are passed around from project to project. I simply copy them. Bu
 
 Кроме webServerUtils.h все функции не привязаны к платформам и могут работать где угодно, это просто алгоритмы. В том числе не на Arduino. Но может понадобится изменение типов переменных.
 
-## Description of functions
+## Описание функций
 
 Все функции оформлены как объекты, для минимизации пересечения с глобальными именами в проектах.
 
-### TimerMinim.h
+В функциях, где надо передавать размер буфера, это сделано специально, так как создание шаблонных функций вместо прямого указания размера сильно раздувает итоговый бинарный код. Сокращение исходного кода и более красивый синтаксис против экономии размера прошивки.
+
+### описание TimerMinim.h
 
 Средство для пропуска нужного времени. Да, именно пропуска, это не полноценный таймер, который работает на прерываниях и расчитывает с точностью до микросекунд. Даже по сравнению с другими таймерами на millis(), он не вычисляет точные интервалы. Как показала практика, всё это не нужно в реальной жизни. Нужно посмотреть прошло ли нужное время, чтобы выполнить какое-то действие. Идея была честно взята у проекта [GyverMatrixWiFi](https://github.com/vvip-68/GyverMatrixWiFi), где меня поразила простата и взял его к себе в проект часов. Со временем код раздувался, страдал гигантизмом и опять усыхал, выбрасывая всё, что оказалось не нужно. В результате получился маленький и компактный объект.
 
@@ -70,7 +324,7 @@ void setNext(uint32_t next = 0)
 
 Более детальные примеры в examples.
 
-### TimerMinimT.hpp
+### описание TimerMinimT.hpp
 
 Всё аналогично timerMinim.h, кроме того, что нужно при создании передавать функцию, котороая считает тики. Подробнее в examples
 
@@ -79,7 +333,7 @@ void setNext(uint32_t next = 0)
 timerMinimT<my_time_func> timer;
 ```
 
-### FletcherChecksum.h
+### описание FletcherChecksum.h
 
 Расчёт контрольной суммы. На входе всегда массив байт и его размер. На выходе контрольная сумма
 
@@ -109,7 +363,7 @@ void some_func() {
 }
 ```
 
-### StringConverters.h
+### описание StringConverters.h
 
 Кодирование и декодирование строк в форматы для URL и JSON
 
@@ -117,23 +371,27 @@ void some_func() {
 
 ```cpp
 // кодирование строки для GET запросов
-static String urlEncode(const char* str, bool params = false)
-static String urlEncode(const String &str, bool params = false)
+String urlEncode(const char* str, bool params = false)
+String urlEncode(const String &str, bool params = false)
+
+// декодирование строки для GET запросов
+String urlDecode(const char* str, bool params = false)
+static String urlDecode(const String &str, bool params = false)
 
 // Простое экранирование для json без конвертации кодировки
-static String jsonEscape(const char* str)
-static String jsonEscape(const String& str)
+String jsonEscape(const char* str)
+String jsonEscape(const String& str)
 
 // Ковертация строки для json, из utf8 в utf16 вида \uABCD
-static String jsonEncode(const char* str)
-static String jsonEncode(const String &str)
+String jsonEncode(const char* str)
+String jsonEncode(const String &str)
 
 // Конвертер json из utf16 вида \uABCD в текст utf8
-static String jsonDecode(const char* str)
-static String jsonDecode(const String &str)
+String jsonDecode(const char* str)
+String jsonDecode(const String &str)
 ```
 
-Использовать можно как в вмде:
+Использовать можно как в виде:
 
 ```cpp
 #include <StringConverters.h>
@@ -157,7 +415,7 @@ void some_func() {
 На размер кода после компиляции это не влияет, только на удобство и читаемость кода.
 
 
-### StringConvertersС.h
+### описание StringConvertersС.h
 
 Кодирование и декодирование строк в форматы для URL и JSON, версия со статическим буфером.
 
@@ -168,7 +426,14 @@ void some_func() {
 - Функция которая проше, она сама выделяет буфер в стеке примерно нужного размера. Если буфер оказался меньше, чем надо, то часть строки просто потеряется.
 - Ещё более простая функция, которая просто ссылается на функцию выделения памяти.
 
-Так как память выделяется статическим буфером в стеке, то может происходить его переполнение и перезагрузка микроконтроллера. Размер стека для esp8266 4kB, но можно относительно безопасно использовать только 2kB. Для esp32 всё в два раза больше. Если плата перезагружается, то надо самостоятельно выделить память через malloc/free и указать функции этот буфер. Но обычно размера в стеке достаточно. Эта билиотека для быстрого и лёгкого кодирования небольших строк, которые принимаются или передаются в качестве параметров.
+Если пользоваться только второй и третьей формой, то пропадает преимущество статического буфера. Тогда лучше пользоваться динамической версией этой библиотеки.
+
+Так как память выделяется статическим буфером в стеке, то может происходить его переполнение и перезагрузка микроконтроллера. Размер стека для esp8266 4kB, но можно относительно безопасно использовать только 2kB. Для esp32 всё в два раза больше. Если плата перезагружается, то надо самостоятельно выделить память через malloc/free и указать функции этот буфер. Но обычно размера в стеке достаточно. По умолчанию допустимый размер буфера 2000 байт, но его можно измениить узавав _перед_ подключением библиотеки ```#define SC_SET_MAX_BUFFER_SIZE XXXX```
+
+```cpp
+#define SC_SET_MAX_BUFFER_SIZE 1500
+#include <StringConvertersС.h>
+```
 
 Немного занудства.  
 - Один символ в UTF-8 может занимать 1, 2, 3 или 4 байта. Один символ в UTF-16 занимает 2 или 4 байта.
@@ -186,6 +451,11 @@ const char* urlEncode(char* buf, const char* str, size_t max_length, bool params
 String urlEncode(const char* str, bool params = false)
 String urlEncode(const String &str, bool params = false)
 
+// декодирование строки для GET запросов
+const char* urlDecode(char* buf, const char* str, size_t max_length)
+String urlDecode(const char* str)
+String urlDecode(const String &str)
+
 // Простое экранирование для json без конвертации кодировки
 const char* jsonEscape(char *buf, const char *str, size_t max_length)
 String jsonEscape(const char* str)
@@ -202,20 +472,17 @@ String jsonDecode(const char* str)
 String jsonDecode(const String &str)
 ```
 
-### WebServerUtils.h
+### описание WebServerUtils.h
 
 Набор фукции для упрощения организации http сервера.
 
-Это именно набор отдельных типовых функций, а не готовое решение. Они решают две задачи:
+Это именно набор отдельных типовых функций, а не готовое решение. Они решают несколько задач:
 - отдача статических файлов с кешированием в броузере
 - перевод параметров в переменные для упрощения обработки форм.
-
-Отдача статических файлов хорошо везде описана и любой ИИ вам изобразит готовую функцию. Моя функция просто немного оптимизирована и обкатана.
-
-Обработка параметров тоже не срывает звёз с неба, но позволяет унифицировать обработку форм:
-- подогнать полученные параметры под допустимый диапазон
-- понять, что какой-то параметр изменился и надо выполнить како-то действие
+- подогнать полученные параметры под допустимый диапазон.
 - понять, что есть изменение в параметрах и надо записать изменения.
+
+Более детально смотрите в примере.
 
 ```cpp
 // конструктор с указанием, какой именно сервер используется. Поддерживается WebServer для esp32 и ESP8266WebServer для esp8266
@@ -253,4 +520,21 @@ bool to_string(F *name, char * var, size_t len)
 // определение времени
 template <typename F>
 bool time(F *name, uint16_t &var)
+
+// сохранение цвета из строки #RRGGBB в переменной uint32_t
+bool color(F *name, uint32_t &var)
+
+// выделение времени из текста (HH:MM)
+uint16_t decode_time(String s)
+```
+
+### описание TextToColor.h
+
+Перевод строки вида #RRGGBB в uint32_t и обратно.
+
+```cpp
+uint32_t text_to_color(const char *s)
+uint32_t text_to_color(const String &s)
+
+String color_to_text(uint32_t c)
 ```

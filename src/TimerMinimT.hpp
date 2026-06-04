@@ -19,17 +19,17 @@ template <unsigned long (*TimeFunc)()>
 class TimerMinimT
 {
 	public:
-		// объявление таймера с указанием интервала
+		// timer declaration with interval specification
 		TimerMinimT(unsigned long interval=60000) {
 			setInterval(interval);
 		}
-		// установка интервала работы таймера и сброс таймера
+		// setting the timer interval and resetting the timer
 		void setInterval(unsigned long interval) {
 			// хотя-бы одна миллисекунда, для приличия
 			_interval = interval ? interval: 1;
 			reset();
 		}
-		// возвращает true, когда пришло время.
+		// returns true when the time has come
 		bool isReady() {
 			if ((long)(TimeFunc() - _next) > 0) {
 				reset();
@@ -37,11 +37,11 @@ class TimerMinimT
 			}
 			return false;
 		}
-		// ручной сброс таймера, отсчёт начнётся с начала
+		// manual reset of the timer, the countdown will start from the beginning
 		void reset() {
 			_next = TimeFunc() + _interval;
 		}
-		// выставить задержку до следующего срабатывания, или дублирует reset(), если задержка 0.
+		// set a delay until the next triggering, or duplicates reset() if the delay is 0
 		void setNext(unsigned long next = 0) {
 			_next = TimeFunc() + (next ? next: _interval);
 		}

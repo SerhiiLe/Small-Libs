@@ -9,13 +9,15 @@
 Эти переходы между различными кодировками немного задалбливают. На языках более высокого уровня обычно этого даже не замечаешь, а здесь функции длинной в километр.
 */
 
+#ifndef SC_SET_MAX_BUFFER_SIZE
+#define SC_SET_MAX_BUFFER_SIZE 2000
+#endif
+
 class StringConvertersC {
 
 public:
-// статический дефолтный размер буфера. Буфер на стеке, лучше не превышать 2к. Для ESP32 можно 4000.
-static const size_t DEFAULT_MAX_SIZE = 2000;
 
-// кодирование строки для GET запросов
+// string encoding for GET requests
 static const char* urlEncode(char* buf, const char* str, size_t max_length, bool params = false) {
 	size_t i = 0, length = strlen(str);
 	char c, t, *p = buf, *last = buf + max_length -1; // -1 На завершающий ноль
@@ -35,7 +37,7 @@ static const char* urlEncode(char* buf, const char* str, size_t max_length, bool
 	*p = 0;
 	return buf;
 }
-// кодирование строки для GET запросов
+// string encoding for GET requests
 static String urlEncode(const char* str, bool params = false) {
 	size_t len = strlen(str) * 3 + 10;
 	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // обрезание буфера, не вся строка может поместиться, она будет обрезана
@@ -46,12 +48,47 @@ static String urlEncode(const char* str, bool params = false) {
 	// free(buf);
 	return String(urlEncode(buf, str, len, params));
 }
-// кодирование строки для GET запросов
+// string encoding for GET requests
 static String urlEncode(const String &str, bool params = false) {
 	return urlEncode(str.c_str(), params);
 }
 
-// Простое экранирование для json без конвертации кодировки
+// Simple JSON escaping without encoding conversion
+static const char* urlDecode(char* buf, const char* str, size_t max_length) {
+	size_t i = 0, length = strlen(str);
+	char c, t, *p = buf, *last = buf + max_length -1; // -1 На завершающий ноль
+	char* error; // указатель на символ который не является шестнадцатеричным числом.
+	char code[] = "0x00"; // буфер в котором будем создавать число по формату функции strtol 0xAB
+
+	while( i < length && p < last) {
+		c = str[i++];
+		if (c == '+') {
+			*p++ = ' ';
+		} else if (c == '%') {
+			if (i+2 > length) break;
+			code[2] = str[i++];
+			code[3] = str[i++];
+			*p++ = (char)strtol(code, &error, 16);
+		} else {
+			*p++ = c;
+		}
+	}
+	*p = 0;
+	return buf;
+}
+// Simple JSON escaping without encoding conversion
+static String urlDecode(const char* str) {
+	size_t len = strlen(str) +1;
+	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // временный массив в стеке
+	char buf[len];
+	return String(urlDecode(buf,str,len));
+}
+// Simple JSON escaping without encoding conversion
+static String urlDecode(const String &str) {
+	return String(urlDecode(str.c_str()));
+}
+
+// Simple JSON escaping without encoding conversion
 static const char* jsonEscape(char *buf, const char *str, size_t max_length) {
 	size_t i = 0, length = strlen(str);
 	byte c;
@@ -84,19 +121,19 @@ static const char* jsonEscape(char *buf, const char *str, size_t max_length) {
 	*p = 0;
 	return buf;
 }
-// Простое экранирование для json без конвертации кодировки
+// Simple JSON escaping without encoding conversion
 static String jsonEscape(const char* str) {
 	size_t len = (strlen(str) * 5) /4 + 10; // думаю буфера +25% достаточно
 	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // обрезание буфера, не вся строка может поместиться, она будет обрезана
 	char buf[len];
 	return String(jsonEscape(buf, str, len));
 }
-// Простое экранирование для json без конвертации кодировки
+// Simple JSON escaping without encoding conversion
 static String jsonEscape(const String& str) {
 	return jsonEscape(str.c_str());
 }
 
-// Ковертация строки для json, из utf8 в utf16 вида \uABCD
+// Converting a JSON string from UTF-8 to UTF-16 like \uABCD
 static const char* jsonEncode(char* buf, const char *str, size_t max_length) {
 	size_t i = 0, length = strlen(str);
 	byte c; 
@@ -157,24 +194,24 @@ static const char* jsonEncode(char* buf, const char *str, size_t max_length) {
 	*p = '\0';
 	return buf;
 }
-// Ковертация строки для json, из utf8 в utf16 вида \uABCD
+// Converting a JSON string from UTF-8 to UTF-16 like \uABCD
 static String jsonEncode(const char* str) {
 	size_t len = strlen(str)*3 + 24;
 	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // обрезание буфера, не вся строка может поместиться, она будет обрезана
 	char buf[len];
 	return String(jsonEncode(buf, str, len));
 }
-// Ковертация строки для json, из utf8 в utf16 вида \uABCD
+// Converting a JSON string from UTF-8 to UTF-16 like \uABCD
 static String jsonEncode(const String &str) {
 	return jsonEncode(str.c_str());
 }
 
-// Конвертер json из utf16 вида \uABCD в текст utf8
+// JSON converter from utf16 \uABCD to utf8 text
 static const char* jsonDecode(char* buf, const char* str, size_t max_length) {
 	size_t i = 0, length = strlen(str);
 	char c, t, *p = buf, *last = buf + max_length -1;
 	char* error; // указатель на символ который не является шестнадцатеричным числом.
-	char unicode[6] = "0x"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
+	char unicode[] = "0x0000"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
 
 	while( i < length && p < last) {
 		c = str[i++];
@@ -184,8 +221,7 @@ static const char* jsonDecode(char* buf, const char* str, size_t max_length) {
 				// выборка из 4х последовательных символов, чтобы получить формат 0xABCD (16 бит)
 				if (i+3 > length) break; // входная строка внезапно оборвалась :(
 				for (int j = 2; j < 6; j++){
-					c = str[i++];
-					unicode[j] = c;
+					unicode[j] = str[i++];
 				}
 				long uFirst = strtol(unicode, &error, 16); // первый промежуточный вариант
 				if (uFirst < 32) {
@@ -202,8 +238,7 @@ static const char* jsonDecode(char* buf, const char* str, size_t max_length) {
 					if (i+5 > length) break; // входная строка внезапно оборвалась :(
 					i += 2; // пропуск пары \u
 					for (int j = 2; j < 6; j++){
-						c = str[i++];
-						unicode[j] = c;
+						unicode[j] = str[i++];
 					}
 					long uSecond = strtol(unicode, &error, 16); // второй промежуточный вариант
 					codepoint = (((uFirst - 0xD800) << 10) | (uSecond - 0xDC00)) + 0x10000;
@@ -240,14 +275,14 @@ static const char* jsonDecode(char* buf, const char* str, size_t max_length) {
 	*p = 0;
 	return buf;
 }
-// Конвертер json из utf16 вида \uABCD в текст utf8
+// JSON converter from utf16 \uABCD to utf8 text
 static String jsonDecode(const char* str) {
 	size_t len = strlen(str) +1;
 	if (len > DEFAULT_MAX_SIZE) len = DEFAULT_MAX_SIZE; // временный массив в стеке
 	char buf[len];
 	return String(jsonDecode(buf, str, len));
 }
-// Конвертер json из utf16 вида \uABCD в текст utf8
+// JSON converter from utf16 \uABCD to utf8 text
 static String jsonDecode(const String &str) {
 	return jsonDecode(str.c_str());
 }
@@ -274,6 +309,9 @@ static char is_letter_esc(char c) {
 	else if (c == '\f') t = 'f';
 	return t;
 }
+
+// статический дефолтный размер буфера. Буфер на стеке, лучше не превышать 2к. Для ESP32 можно 4000.
+static const size_t DEFAULT_MAX_SIZE = SC_SET_MAX_BUFFER_SIZE;
 
 }; // конец class StringConverters
 

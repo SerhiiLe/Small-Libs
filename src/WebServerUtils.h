@@ -3,17 +3,19 @@
 
 #include <Arduino.h>
 
+#include "TextToColor.h"
+
 template <typename Server>
 class WebServerUtils {
 public:
 
-// конструктор с указанием, какой именно сервер используется. Поддерживается WebServer для esp32 и ESP8266WebServer для esp8266
+// A constructor specifying which server is used. WebServer for ESP32 and ESP8266 is supported.
 WebServerUtils(Server& srv) : SRV(srv) {}
 
-// флаг изменения, меняется в true когда новое значение не совпадает со старым
+// change flag, changes to true when the new value does not match the old one
 bool need_save = false;
 
-// Отправка файла. Первый параметр - путь к файлу. Второй параметр - функция которая разрешает кеширование для определённых файлов
+// Sending a file. The first parameter is the file path. The second parameter is a function that enables caching for specific files.
 bool fileSend(const String &path, bool (*cc)(const String &p)=nullptr) {
 	bool cache_enable = true;
 	// определение типа файла
@@ -28,11 +30,6 @@ bool fileSend(const String &path, bool (*cc)(const String &p)=nullptr) {
 	else if(path.endsWith(F(".ico"))) ct = PSTR("image/x-icon");
 	else { ct = PSTR("text/plain"); cache_enable = cc ? cc(path): false; }
 	// открытие файла на чтение
-	if(!fs_isStarted) {
-		// файловая система не загружена, переход на страничку обновления
-		SRV.client().printf_P(PSTR("HTTP/1.1 200\r\nContent-Type: %s\r\nContent-Length: 80\r\nConnection: close\r\n\r\n<html><body><h1><a href='/update'>File system not exist!</a></h1></body></html>"),ct);
-		return true;
-	}
 	if(LittleFS.exists(path)) {
 		File file = LittleFS.open(path, "r");
 #ifdef ESP32
@@ -65,7 +62,7 @@ bool fileSend(const String &path, bool (*cc)(const String &p)=nullptr) {
 
 /****** шаблоны простых операций для выделения переменных из web ******/
 
-// определение выбран checkbox или нет
+// determining whether a checkbox is selected or not
 template <typename F>
 bool checkbox(F *name, uint8_t &var) {
 	if( SRV.hasArg(name) ) {
@@ -84,7 +81,7 @@ bool checkbox(F *name, uint8_t &var) {
 	return false;
 }
 
-// определение простых целых чисел
+// definition of integers
 template <typename F, typename T>
 bool to_int(F *name, T &var, long from, long to) {
 	if( SRV.hasArg(name) ) {
@@ -97,7 +94,7 @@ bool to_int(F *name, T &var, long from, long to) {
 	return false;
 }
 
-// определение дробных чисел
+// definition of floating-point numbers
 template <typename F>
 bool to_float(F *name, float &var, float from, float to, float prec=8.0f) {
 	if( SRV.hasArg(name) ) {
@@ -110,7 +107,7 @@ bool to_float(F *name, float &var, float from, float to, float prec=8.0f) {
 	return false;
 }
 
-// определение строк (для String)
+// string definition (for String)
 template <typename F>
 bool to_string(F *name, String &var) {
 	if( SRV.hasArg(name) ) {
@@ -123,7 +120,7 @@ bool to_string(F *name, String &var) {
 	return false;
 }
 
-// определение простых строк (для char[])
+// string definition (for char[])
 template <typename F>
 bool to_string(F *name, char * var, size_t len) {
 	if( SRV.hasArg(name) ) {
@@ -137,7 +134,7 @@ bool to_string(F *name, char * var, size_t len) {
 	return false;
 }
 
-// определение времени
+// time definition, HH:MM to uint16_t
 template <typename F>
 bool time(F *name, uint16_t &var) {
 	if( SRV.hasArg(name) ) {
@@ -150,14 +147,25 @@ bool time(F *name, uint16_t &var) {
 	return false;
 }
 
-// установка другого времени жизни кэша в броузере, в секундах
-void setCacheLive(uint16_t cache_life_time) {
-	cache_live = cache_life_time;
+// storing the color from the string #RRGGBB in a uint32_t variable
+template <typename F>
+bool color(F *name, uint32_t &var) {
+	if( SRV.hasArg(name) ) {
+		if( TextToColor::text_to_color(SRV.arg(name).c_str()) != var ) {
+			var = TextToColor::text_to_color(SRV.arg(name).c_str());
+			need_save = true;
+			return true;
+		}
+	}
+	return false;
 }
 
-private:
+// Sets the browser cache lifetime in seconds, defaulting to one hour = 3600 seconds
+void setCacheLive(uint16_t cache_life_time) {
+	cache_live = constrain(cache_life_time, 0, 86400);
+}
 
-// декодирование времени, заданного в поле input->time (HH:MM)
+// decoding the time specified in the input->time field (HH:MM)
 uint16_t decode_time(String s) {
 	// выделение часов и минут из строки вида 00:00
 	size_t pos = s.indexOf(":");
@@ -166,8 +174,10 @@ uint16_t decode_time(String s) {
 	return h*60 + m;
 }
 
+private:
+
 Server& SRV; // ссылка на сервер
-uint16_t cache_live = 3600;  // время жизни кэша
+uint32_t cache_live = 3600;  // время жизни кэша
 
 }; // конец class webServerUtils
 

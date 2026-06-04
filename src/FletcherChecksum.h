@@ -13,7 +13,6 @@
 struct FletcherChecksum
 {
     // Calculating the checksum using the Flatcher8 formula
-    // Расчёт контрольной суммы по формуле Flatcher8
     static uint8_t fletcher8(uint8_t *data, size_t len) {
         uint16_t sum1 = 0xf, sum2 = 0xf;
         while( len-- ) {
@@ -28,7 +27,6 @@ struct FletcherChecksum
     }
 
     // Calculating the checksum using the Flatcher16 formula
-    // Расчёт контрольной суммы по формуле Fletcher16
     static uint16_t fletcher16(uint8_t *data, size_t len) {
         uint16_t sum1 = 0;
         uint16_t sum2 = 0;

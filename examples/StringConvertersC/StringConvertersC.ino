@@ -81,6 +81,11 @@ void setup() {
   Serial.println(F("encoded to URL parameters:"));
   Serial.println(res);
 
+  // Декодирование из формата для URL
+  // URL decoding
+  Serial.println(F("decoded from URL:"));
+  Serial.println(conv.urlDecode(res));
+
 }
 
 void loop() {

@@ -138,8 +138,8 @@ bool to_string(F *name, char * var, size_t len) {
 template <typename F>
 bool time(F *name, uint16_t &var) {
 	if( SRV.hasArg(name) ) {
-		if( SmallConverters::decode_time(SRV.arg(name)) != var ) {
-			var = SmallConverters::decode_time(SRV.arg(name));
+		if( StringConverters::text_to_time(SRV.arg(name)) != var ) {
+			var = StringConverters::text_to_time(SRV.arg(name));
 			need_save = true;
 			return true;
 		}
@@ -151,8 +151,8 @@ bool time(F *name, uint16_t &var) {
 template <typename F>
 bool color(F *name, uint32_t &var) {
 	if( SRV.hasArg(name) ) {
-		if( SmallConverters::text_to_color(SRV.arg(name).c_str()) != var ) {
-			var = SmallConverters::text_to_color(SRV.arg(name).c_str());
+		if( StringConverters::text_to_color(SRV.arg(name).c_str()) != var ) {
+			var = StringConverters::text_to_color(SRV.arg(name).c_str());
 			need_save = true;
 			return true;
 		}

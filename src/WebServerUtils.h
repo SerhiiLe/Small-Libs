@@ -166,7 +166,7 @@ void setCacheLive(uint16_t cache_life_time) {
 }
 
 // decoding the time specified in the input->time field (HH:MM)
-uint16_t decode_time(String s) {
+static uint16_t decode_time(String s) {
 	// выделение часов и минут из строки вида 00:00
 	size_t pos = s.indexOf(":");
 	uint8_t h = constrain(s.toInt(), 0, 23);

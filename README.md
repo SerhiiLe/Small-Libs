@@ -14,10 +14,12 @@ Good practices are passed around from project to project. I simply copy them. Bu
 - [How to use](#how-to-use)
 
 - [The simplest timer for organizing delays instead of delay()](#timerminimh)
-- [A template class for a simple timer]()
-- [Checksum calculations]()
-- [Кодирование и декодирование строк в форматы для URL и JSON]()
-- [Набор фукции для упрощения организации http сервера]()
+- [A template class for a simple timer](#timerminimthpp)
+- [Checksum calculations](#fletcherchecksumh)
+- [Encoding and decoding strings into URL and JSON formats](#stringconvertersh)
+- [Encoding and decoding strings into URL and JSON formats, static version](#stringconvertersсh)
+- [A set of functions to simplify the organization of an HTTP server](#webserverutilsh)
+- [Converting a string like #RRGGBB to uint32_t and back](#texttocolorh)
 
 ## How to install
 
@@ -253,7 +255,7 @@ bool time(F *name, uint16_t &var)
 bool color(F *name, uint32_t &var)
 
 // decoding the time specified in the input->time field (HH:MM)
-uint16_t decode_time(String s)
+static uint16_t decode_time(String s)
 ```
 
 ### TextToColor.h
@@ -272,11 +274,13 @@ String color_to_text(uint32_t c)
 - [Как установить](#как-устанавливить)
 - [Как пользоваться](#как-пользоваться)
 
-- [Простейший таймер для организации задержек вместо delay()](#timerminimh)
-- [Шаблонный класс простейшего таймера](#timerminimthpp)
-- [Вычисления контрольных сумм](#fletcherchecksumh)
-- [Кодирование и декодирование строк в форматы для URL и JSON](#stringconvertersh)
-- [Набор фукции для упрощения организации http сервера](#webserverutilsh)
+- [Простейший таймер для организации задержек вместо delay()](#описание-timerminimh)
+- [Шаблонный класс простейшего таймера](#описание-timerminimthpp)
+- [Вычисления контрольных сумм](#описание-fletcherchecksumh)
+- [Кодирование и декодирование строк в форматы для URL и JSON](#описание-stringconvertersh)
+- [Кодирование и декодирование строк в форматы для URL и JSON, статический вариант](#описание-stringconvertersсh)
+- [Набор фукции для упрощения организации http сервера](#описание-webserverutilsh)
+- [Перевод строки вида #RRGGBB в uint32_t и обратно](#описание-texttocolorh)
 
 ## Как устанавливить
 
@@ -525,7 +529,7 @@ bool time(F *name, uint16_t &var)
 bool color(F *name, uint32_t &var)
 
 // выделение времени из текста (HH:MM)
-uint16_t decode_time(String s)
+static uint16_t decode_time(String s)
 ```
 
 ### описание TextToColor.h

@@ -130,6 +130,19 @@ String jsonEncode(const String &str)
 // JSON converter from utf16 \uABCD to utf8 text
 String jsonDecode(const char* str)
 String jsonDecode(const String &str)
+
+// #RRGGBB to uint32_t
+uint32_t text_to_color(const char *s)
+uint32_t text_to_color(const String &s)
+
+// uint32_t to #RRGGBB
+String color_to_text(uint32_t c)
+
+// decoding the time specified in the input->time field (HH:MM)
+uint16_t text_to_time(String s)
+
+// encoding the time specified in HH:MM
+static String time_to_text(uint16_t time)
 ```
 
 It can be used in the form of:
@@ -258,16 +271,38 @@ bool color(F *name, uint32_t &var)
 static uint16_t decode_time(String s)
 ```
 
-### TextToColor.h
+### BlinkMinim.h
 
-Converting a string like #RRGGBB to uint32_t and back.
+Repeating actions. In the simplest case, it controls a pin (LED). But it can also act as a timer and perform more complex repeating actions.
 
 ```cpp
-uint32_t text_to_color(const char *s)
-uint32_t text_to_color(const String &s)
+// pin - PIO pin number, mode - LED switching on at LOW or HIGH level
+BlinkMinim(uint8_t pin=255, uint8_t level=HIGH, void (*writeBit)(uint8_t, uint8_t)=*digitalWrite, int (*readBit)(uint8_t)=*digitalRead)
 
-String color_to_text(uint32_t c)
+// duplicates the constructor for cases where it was called without arguments. Can be called multiple times
+void begin(uint8_t pin, uint8_t level=HIGH, void (*writeBit)(uint8_t, uint8_t)=*digitalWrite, int (*readBit)(uint8_t)=*digitalRead)
+
+// stop blink
+void clean()
+
+// Must be called in loop()
+void tick()
+
+// start or stop blink
+void blink(uint8_t mode=1, uint16_t interval=500, uint16_t cnt=0, uint16_t duration=0, void (*userFunc)(void)=nullptr)
+
+// set the pin state
+void set(uint8_t mode=1)
+
+// invert the state of the pin
+void invert()
+
+// active or not
+uint8_t state()
 ```
+
+For more details, see the example.
+
 
 ## Оглавление
 
@@ -393,6 +428,19 @@ String jsonEncode(const String &str)
 // Конвертер json из utf16 вида \uABCD в текст utf8
 String jsonDecode(const char* str)
 String jsonDecode(const String &str)
+
+// #RRGGBB в uint32_t
+uint32_t text_to_color(const char *s)
+uint32_t text_to_color(const String &s)
+
+// uint32_t в #RRGGBB
+String color_to_text(uint32_t c)
+
+// перевод строки вида HH:MM в число, количество минут с полуночи
+uint16_t text_to_time(String s)
+
+// перевод количество минут в строку вида HH:MM
+static String time_to_text(uint16_t time)
 ```
 
 Использовать можно как в виде:
@@ -423,7 +471,7 @@ void some_func() {
 
 Кодирование и декодирование строк в форматы для URL и JSON, версия со статическим буфером.
 
-Для этой версии функций нужно самомтоятельно выделять буфер, для строк небольшого размера удобно это делать в стеке, что полностью исключает фрагментирование памяти. Так-же эта версия библиотеки немного меньше занимает после компиляции, но разница не существенна. Использовать эту версию нужно только при возникновении проблемы фрагментации памяти с динамической версией этих функций. 
+Для этой версии функций нужно самостоятельно выделять буфер, для строк небольшого размера удобно это делать в стеке, что полностью исключает фрагментирование памяти. Так-же эта версия библиотеки немного меньше занимает после компиляции, но разница не существенна. Использовать эту версию нужно только при возникновении проблемы фрагментации памяти с динамической версией этих функций. 
 
 Все функции сделаны по одной схеме:
 - Базовая функция, которая принимает готовый буфер для преобразования и его размер. Это полезно для больших строк или если строк много и используется один буфер для уменьшения фрагментации памяти
@@ -532,13 +580,34 @@ bool color(F *name, uint32_t &var)
 static uint16_t decode_time(String s)
 ```
 
-### описание TextToColor.h
+### описание BlinkMinim.h
 
-Перевод строки вида #RRGGBB в uint32_t и обратно.
+Повторяющиеся действия. В простейшем случае управление pin (светодиодом). Но может, в том числе играть роль таймера и выполнять более сложные повторяющиеся действия.
 
 ```cpp
-uint32_t text_to_color(const char *s)
-uint32_t text_to_color(const String &s)
+// pin - номер ножки PIO, mode - включение светодиода по низкому LOW или высокому HIGH уровню
+BlinkMinim(uint8_t pin=255, uint8_t level=HIGH, void (*writeBit)(uint8_t, uint8_t)=*digitalWrite, int (*readBit)(uint8_t)=*digitalRead)
 
-String color_to_text(uint32_t c)
+// дублирует конструктор, для случаев, если он был вызван без аргументов
+void begin(uint8_t pin, uint8_t level=HIGH, void (*writeBit)(uint8_t, uint8_t)=*digitalWrite, int (*readBit)(uint8_t)=*digitalRead)
+
+// stop blink
+void clean()
+
+// Надо вызывать в loop()
+void tick()
+
+// запуск или остановка blink
+void blink(uint8_t mode=1, uint16_t interval=500, uint16_t cnt=0, uint16_t duration=0, void (*userFunc)(void)=nullptr)
+
+// принудительно установить состояние пина
+void set(uint8_t mode=1)
+
+// инвертировать состояние пина
+void invert()
+
+// Узнать, активен ли блинк
+uint8_t state()
 ```
+
+Детальнее в примере

@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#include "TextToColor.h"
+#include "SmallConverters.h"
 
 template <typename Server>
 class WebServerUtils {
@@ -138,8 +138,8 @@ bool to_string(F *name, char * var, size_t len) {
 template <typename F>
 bool time(F *name, uint16_t &var) {
 	if( SRV.hasArg(name) ) {
-		if( decode_time(SRV.arg(name)) != var ) {
-			var = decode_time(SRV.arg(name));
+		if( SmallConverters::decode_time(SRV.arg(name)) != var ) {
+			var = SmallConverters::decode_time(SRV.arg(name));
 			need_save = true;
 			return true;
 		}
@@ -151,8 +151,8 @@ bool time(F *name, uint16_t &var) {
 template <typename F>
 bool color(F *name, uint32_t &var) {
 	if( SRV.hasArg(name) ) {
-		if( TextToColor::text_to_color(SRV.arg(name).c_str()) != var ) {
-			var = TextToColor::text_to_color(SRV.arg(name).c_str());
+		if( SmallConverters::text_to_color(SRV.arg(name).c_str()) != var ) {
+			var = SmallConverters::text_to_color(SRV.arg(name).c_str());
 			need_save = true;
 			return true;
 		}
@@ -163,15 +163,6 @@ bool color(F *name, uint32_t &var) {
 // Sets the browser cache lifetime in seconds, defaulting to one hour = 3600 seconds
 void setCacheLive(uint16_t cache_life_time) {
 	cache_live = constrain(cache_life_time, 0, 86400);
-}
-
-// decoding the time specified in the input->time field (HH:MM)
-static uint16_t decode_time(String s) {
-	// выделение часов и минут из строки вида 00:00
-	size_t pos = s.indexOf(":");
-	uint8_t h = constrain(s.toInt(), 0, 23);
-	uint8_t m = constrain(s.substring(pos+1).toInt(), 0, 59);
-	return h*60 + m;
 }
 
 private:

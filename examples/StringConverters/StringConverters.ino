@@ -63,6 +63,36 @@ void setup() {
   Serial.println(F("decoded from URL:"));
   Serial.println(conv.urlDecode(res));
 
+  // Код цвета в число
+  // Color code to number
+  const char test2[] = "#123456";
+  uint32_t color = conv.text_to_color(test2);
+  Serial.print(F("color: ")); Serial.print(test2); Serial.print(F(" -> ")); Serial.print(color);
+
+  // Число в код цвета
+  // Number in color code
+  Serial.print(F(" -> ")); Serial.println(conv.color_to_text(color));
+
+  // Неправильный код цвета в число
+  // Incorrect color code to number
+  const char test3[] = "--a,g,b--";
+  color = conv.text_to_color(test3);
+  Serial.print(F("incorrect color: ")); Serial.print(test3); Serial.print(F(" -> ")); Serial.print(color);
+
+  // Число в код цвета
+  // Number in color code
+  Serial.print(F(" -> ")); Serial.println(conv.color_to_text(color));
+
+  // HH:MM в число
+  // HH:MM to number
+  const char test4[] = "13:45";
+  uint16_t time = conv.text_to_time(test4);
+  Serial.print(F("time: ")); Serial.print(test4); Serial.print(F(" -> ")); Serial.print(time);
+
+  // Число в HH:MM
+  // Number to HH:MM
+  Serial.print(F(" -> ")); Serial.println(conv.time_to_text(time));
+
 }
 
 void loop() {

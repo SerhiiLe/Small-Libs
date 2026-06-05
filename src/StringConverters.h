@@ -46,8 +46,6 @@ public:
 		String out;
 		size_t length = strlen(str);
 		if (!out.reserve(length)) return ""; // нет свободной памяти
-		char* error; // указатель на символ который не является шестнадцатеричным числом.
-		char code[] = "0x00"; // буфер в котором будем создавать число по формату функции strtol 0xAB
 
 		for (size_t i = 0; i < length; i++) {
 			char c = str[i];
@@ -55,9 +53,9 @@ public:
 				out += ' ';
 			} else if (c == '%') {
 				if (i+2 > length) break;
-				code[2] = str[++i];
-				code[3] = str[++i];
-				out += (char)strtol(code, &error, 16);
+				byte t = char_to_byte(str[++i]) == 255 ? 0: char_to_byte(str[i]);
+				t = (t<<4) | (char_to_byte(str[++i]) == 255 ? 0: char_to_byte(str[i]));
+				out += (char)t;
 			} else {
 				out += c;
 			}
@@ -177,8 +175,6 @@ public:
 		String out;
 		size_t length = strlen(str); // выходная строка всегда меньше либо равна исходной
 		if (!out.reserve(length)) return ""; // нет свободной памяти
-		char* error; // указатель на символ который не является шестнадцатеричным числом.
-		char unicode[] = "0x0000"; // буфер в котором будем создавать число по формату функции strtol 0xABCD
 
 		for (size_t i = 0; str[i] != '\0'; ++i) {
 			char c = str[i];
@@ -190,12 +186,13 @@ public:
 			if (c == 'u') { // о, да это же похоже на utf16
 				// выборка из 4х последовательных символов, чтобы получить формат 0xABCD (16 бит)
 				if (i+4 > length) break; // входная строка внезапно оборвалась :(
-				for (int j = 2; j < 6; j++) {
-					unicode[j] = str[++i];
+				uint16_t uFirst = 0;
+				for (int j = 0; j < 4; j++) {
+					if (char_to_byte(str[++i]) == 255) break;
+					uFirst = (uFirst << 4) | char_to_byte(str[i]);
 				}
-				long uFirst = strtol(unicode, &error, 16); // первый промежуточный вариант
 				if (uFirst < 32) {
-					// это управляющий сивол формата \u00XX
+					// это управляющий символ формата \u00XX
 					out += (char)uFirst;
 					continue;
 				}
@@ -207,10 +204,11 @@ public:
 					// надо повторить предыдущий шаг, чтобы получить ещё 16 бит.
 					if (i+6 > length) break; // входная строка внезапно оборвалась :(
 					i += 2; // пропуск пары \u
-					for (int j = 2; j < 6; j++) {
-						unicode[j] = str[++i];
+					uint16_t uSecond = 0;
+					for (int j = 0; j < 4; j++) {
+						if (char_to_byte(str[++i]) == 255) break;
+						uSecond = (uSecond << 4) | char_to_byte(str[i]);
 					}
-					long uSecond = strtol(unicode, &error, 16); // второй промежуточный вариант
 					codepoint = (((uFirst - 0xD800) << 10) | (uSecond - 0xDC00)) + 0x10000;
 				}
 				//-------(2) Codepoint to UTF-8 -------
@@ -245,11 +243,79 @@ public:
 		return jsonDecode(str.c_str());
 	}
 
+	// #RRGGBB to uint32_t
+	static uint32_t text_to_color(const char *s) {
+		if( s == nullptr ) return 0xffffff;
+		uint32_t c = 0, t;
+		size_t i = 0, len = strlen(s);
+		uint8_t cn = 0;
+		char a[6];
+		for(i=0; i<len; i++ ) {
+			if( cn==6 ) break;
+			if( char_to_byte(s[i]) < 255 ) a[cn++] = s[i];
+		}
+		if(cn==0) for(i=cn; i<3; i++) a[i] = 'f';
+		if(cn==1) for(i=1; i<3; i++) a[i] = a[0];
+		if(cn==2) for(i=2; i<6; i++) { a[i] = a[0]; a[++i] = a[1]; cn = 6; }
+		if(cn<6) {
+			for(i=0; i<3; i++) {
+				t = char_to_byte(a[2-i]);
+				c |= (t << (i*8)) | (t << (i*8+4)); 
+			}
+		} else {
+			for(i=0; i<6; i++) {
+				t = char_to_byte(a[5-i]);
+				c |= t << (i*4);
+			}
+		}
+		return c;
+	}
+	// #RRGGBB to uint32_t
+	static uint32_t text_to_color(const String &s) {
+		return text_to_color(s.c_str());
+	}
+
+	// uint32_t to #RRGGBB
+	static String color_to_text(uint32_t c) {
+		char a[] = "#ffffff";
+		byte t = 0;
+		for(int8_t i=1; i<=6; i++) {
+			t = (byte)((c >> ((6-i)*4)) & 0xF);
+			t += t<10? 48: 87;
+			a[i] = (char)t;
+		}
+		return String(a);
+	}
+
+	// decoding the time specified in the input->time field (HH:MM)
+	static uint16_t text_to_time(String s) {
+		// выделение часов и минут из строки вида 00:00
+		size_t pos = s.indexOf(":");
+		uint8_t h = constrain(s.toInt(), 0, 23);
+		uint8_t m = constrain(s.substring(pos+1).toInt(), 0, 59);
+		return h*60 + m;
+	}
+
+	// encoding the time specified in HH:MM
+	static String time_to_text(uint16_t time) {
+		char time_str[10];
+		sprintf_P(time_str, PSTR("%02d:%02d"), time / 60, time % 60);
+		return String(time_str);
+	}
+
 private:
 	// запрос на рсширение буфера строки
 	static bool reserveMore(String &out, size_t &reserved, size_t additional = 0) {
 		reserved = (out.length() > reserved ? out.length(): reserved) + additional;
 		return out.reserve(reserved);
+	}
+
+	// char [0-9a-f] to byte
+	static byte char_to_byte(char n) {
+		if(n>='0' && n<='9') return (byte)n - 48;
+		if(n>='A' && n<='F') return (byte)n - 55;
+		if(n>='a' && n<='f') return (byte)n - 87;
+		return 255;
 	}
 
 	// печать байта в виде шестнадцатеричного числа

@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#include "SmallConverters.h"
+#include "StringConverters.h"
 
 template <typename Server>
 class WebServerUtils {

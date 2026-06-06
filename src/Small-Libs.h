@@ -7,3 +7,4 @@
 #include "FletcherChecksum.h"
 #include "StringConverters.h"
 #include "WebServerUtils.h"
+#include "BlinkMinim.h"

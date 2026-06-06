@@ -270,10 +270,6 @@ public:
 		}
 		return c;
 	}
-	// #RRGGBB to uint32_t
-	static uint32_t text_to_color(const String &s) {
-		return text_to_color(s.c_str());
-	}
 
 	// uint32_t to #RRGGBB
 	static String color_to_text(uint32_t c) {

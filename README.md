@@ -133,7 +133,6 @@ String jsonDecode(const String &str)
 
 // #RRGGBB to uint32_t
 uint32_t text_to_color(const char *s)
-uint32_t text_to_color(const String &s)
 
 // uint32_t to #RRGGBB
 String color_to_text(uint32_t c)
@@ -431,7 +430,6 @@ String jsonDecode(const String &str)
 
 // #RRGGBB в uint32_t
 uint32_t text_to_color(const char *s)
-uint32_t text_to_color(const String &s)
 
 // uint32_t в #RRGGBB
 String color_to_text(uint32_t c)

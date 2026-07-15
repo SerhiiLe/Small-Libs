@@ -83,8 +83,10 @@ uint8_t fletcher8(uint8_t *data, uint16_t len)
 
 // Calculating the checksum using the Flatcher16 formula
 uint16_t fletcher16(uint8_t *data, size_t len)
-```
 
+// Calculating the CRC32 checksum
+uint32_t calculateCRC32(const uint8_t *data, size_t length)
+```
 Example:
 
 ```cpp
@@ -332,6 +334,9 @@ uint8_t fletcher8(uint8_t *data, uint16_t len)
 
 // Расчёт контрольно суммы по формуле Fletcher16
 uint16_t fletcher16(uint8_t *data, size_t len)
+
+// Расчёт контрольной суммы по формуле CRC32
+uint32_t calculateCRC32(const uint8_t *data, size_t length) {
 ```
 
 Пример:
